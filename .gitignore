@@ -1,0 +1,21 @@
+# macOS
+
+.DS_Store
+
+# Output
+
+output.txt
+
+# Ignore executables named q<number>
+
+q[0-9]*
+
+!q*.c
+
+# Object files
+
+*.o
+
+# Debug symbols
+
+*.dSYM/
