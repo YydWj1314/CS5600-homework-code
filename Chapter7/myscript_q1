@@ -1,0 +1,18 @@
+# Chapter 8 - Question 2
+
+for seed in 1 2 3
+do
+    echo "=================================="
+    echo "Seed = $seed"
+    echo "=================================="
+
+    python3 mlfq.py \
+        -s $seed \
+        -n 2 \
+        -j 2 \
+        -m 25 \
+        -M 0 \
+        -c
+
+    echo
+done

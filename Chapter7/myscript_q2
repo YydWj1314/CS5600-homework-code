@@ -1,0 +1,16 @@
+# Chapter 8 - Question 2
+
+for boost in 0 50
+do
+    echo "=================================="
+    echo "Priority Boost = $boost"
+    echo "=================================="
+
+    python3 mlfq.py \
+        --jlist 0,180,0:100,20,0 \
+        -q 10 \
+        -B $boost \
+        -c
+
+    echo
+done
