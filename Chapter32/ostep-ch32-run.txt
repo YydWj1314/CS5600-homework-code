@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ ! -f main-common.c || ! -f vector-deadlock.c ]]; then
+    echo 'Run this file from the ostep-homework/threads-bugs directory.'
+    exit 1
+fi
+
+exec > >(tee ostep-ch32-results.txt) 2>&1
+echo '=== Ubuntu VM ==='
+uname -sm
+printf 'Available CPUs: '
+nproc
+gcc --version | sed -n '1p'
+
+programs=(vector-global-order vector-try-wait vector-avoid-hold-and-wait)
+case "$(uname -m)" in
+    x86_64|i?86) programs+=(vector-nolock) ;;
+    *) echo 'vector-nolock skipped: the original xaddl instruction requires x86.' ;;
+esac
+
+echo '=== Build (-O -fwrapv) ==='
+build_dir=$(mktemp -d)
+trap 'rm -rf -- "$build_dir"' EXIT
+for program in vector-deadlock "${programs[@]}"; do
+    gcc -Wall -pthread -O -fwrapv "$program.c" -o "$build_dir/$program"
+done
+
+run() {
+    local limit=$1 program=$2 status=0
+    shift 2
+    printf '\n$ timeout %s ./%s' "$limit" "$program"
+    printf ' %q' "$@"
+    printf '\n'
+    timeout "$limit" "$build_dir/$program" "$@" || status=$?
+    case "$status" in
+        0) echo '[completed]' ;;
+        124) echo '[timed out]' ;;
+        *) echo "[exit status $status]" ;;
+    esac
+}
+
+echo '=== Q1: Verbose traces ==='
+for trial in 1 2 3; do
+    run 5s vector-deadlock -n 2 -l 1 -v
+done
+
+echo '=== Q2: Vary loop count ==='
+for loops in 1 100 1000; do
+    for trial in 1 2 3; do
+        run 2s vector-deadlock -d -n 2 -l "$loops"
+    done
+done
+
+echo '=== Q3: Vary thread count ==='
+for threads in 1 3 4; do
+    for trial in 1 2 3; do
+        run 2s vector-deadlock -d -n "$threads" -l 1000
+    done
+done
+
+echo '=== Q5: Global order with more iterations ==='
+for trial in 1 2 3; do
+    run 30s vector-global-order -t -d -n 2 -l 400000
+done
+
+echo '=== Q5-Q8 and Q10: Timing and retries ==='
+for threads in 2 4; do
+    for program in "${programs[@]}"; do
+        for trial in 1 2 3; do
+            run 30s "$program" -t -d -n "$threads" -l 100000
+        done
+        for trial in 1 2 3; do
+            run 30s "$program" -t -d -n "$threads" -l 100000 -p
+        done
+    done
+done
+echo '=== Finished ==='
